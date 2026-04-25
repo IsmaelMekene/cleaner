@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cleanner — Simulateur Bot</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 16px;
+  }
+  .demo-banner {
+    background: #1a1a2e; color: #e2e8f0; font-size: 11px;
+    letter-spacing: .08em; text-transform: uppercase;
+    padding: 7px 18px; border-radius: 20px; margin-bottom: 14px; font-weight: 600;
+  }
+  .scenario-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+  .scenario-label { font-size: 11px; color: #6b7280; font-weight: 500; }
+  .scenario-btn {
+    padding: 5px 14px; border-radius: 20px; border: 1.5px solid #d1d5db;
+    background: white; font-size: 12px; font-weight: 500; cursor: pointer;
+    color: #374151; transition: all .15s;
+  }
+  .scenario-btn.active { background: #25D366; border-color: #25D366; color: white; }
+  .phone {
+    width: 100%; max-width: 390px; background: white; border-radius: 24px;
+    overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.18), 0 4px 12px rgba(0,0,0,.08);
+    display: flex; flex-direction: column; height: 720px; max-height: 85vh;
+  }
+  .wa-header {
+    background: #075E54; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  }
+  .wa-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: #25D366;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: white; flex-shrink: 0;
+  }
+  .wa-name { font-size: 16px; font-weight: 600; color: white; }
+  .wa-status { font-size: 12px; color: #b2dfdb; margin-top: 1px; }
+  .wa-dot { display: inline-block; width: 7px; height: 7px; background: #25D366; border-radius: 50%; margin-right: 4px; }
+  .chat-bg {
+    flex: 1; overflow-y: auto; padding: 12px 10px 8px;
+    background: #e5ddd5;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c8b9a8' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .msg-row { display: flex; flex-direction: column; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform:none; } }
+  .msg-row.bot { align-items: flex-start; }
+  .msg-row.user { align-items: flex-end; }
+  .bubble {
+    max-width: 82%; padding: 8px 10px 6px; border-radius: 8px;
+    font-size: 14px; line-height: 1.55; word-wrap: break-word; white-space: pre-wrap;
+  }
+  .bubble.bot { background: white; border-top-left-radius: 2px; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .bubble.user { background: #dcf8c6; border-top-right-radius: 2px; color: #111; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+  .bubble-time { font-size: 10px; color: #8e9ea8; text-align: right; margin-top: 2px; }
+  .bubble.user .bubble-time { color: #6a9f70; }
+  .wave-link {
+    display: flex; align-items: center; gap: 8px;
+    background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;
+    padding: 8px 12px; margin-top: 8px; cursor: default;
+  }
+  .wave-icon {
+    width: 22px; height: 22px; background: #16a34a; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 11px; font-weight: 700; flex-shrink: 0;
+  }
+  .wave-text-main { font-size: 12px; font-weight: 600; color: #16a34a; }
+  .wave-text-sub { font-size: 10px; color: #6b7280; margin-top: 1px; }
+  .typing-bubble {
+    background: white; border-radius: 8px; border-top-left-radius: 2px;
+    padding: 10px 14px; display: inline-flex; align-items: center; gap: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.1);
+  }
+  .typing-dot { width: 7px; height: 7px; background: #90a4ae; border-radius: 50%; animation: typingAnim 1.2s infinite; }
+  .typing-dot:nth-child(2) { animation-delay: .2s; }
+  .typing-dot:nth-child(3) { animation-delay: .4s; }
+  @keyframes typingAnim { 0%,60%,100% { transform:translateY(0); opacity:.5; } 30% { transform:translateY(-4px); opacity:1; } }
+
+  /* Options buttons */
+  .options-row { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; align-self: flex-start; width: 82%; animation: fadeIn .3s ease; }
+  .opt-btn {
+    background: white; border: 1.5px solid #25D366; color: #075E54;
+    border-radius: 8px; padding: 9px 14px; font-size: 13px; font-weight: 500;
+    cursor: pointer; text-align: left; transition: all .12s; font-family: inherit;
+  }
+  .opt-btn:hover { background: #f0fdf4; }
+  .opt-btn:disabled { opacity:.5; cursor:default; border-color:#d1d5db; color:#6b7280; }
+  .opt-btn.selected { background: #dcf8c6; border-color: #4ade80; color: #166534; }
+
+  /* Text input row */
+  .input-row {
+    display: flex; gap: 6px; margin-top: 6px; align-self: stretch;
+    animation: fadeIn .3s ease;
+  }
+  .chat-input {
+    flex: 1; border: 1.5px solid #d1d5db; border-radius: 22px;
+    padding: 9px 14px; font-size: 14px; font-family: inherit;
+    outline: none; color: #111; background: white;
+    transition: border-color .15s;
+  }
+  .chat-input:focus { border-color: #25D366; }
+  .send-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: #25D366; color: white; font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: background .15s;
+  }
+  .send-btn:hover { background: #1db954; }
+  .send-btn:disabled { background: #d1d5db; cursor: default; }
+
+  .reset-bar { padding: 10px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; flex-shrink: 0; }
+  .reset-btn {
+    padding: 7px 20px; border-radius: 20px; border: 1.5px solid #e2e8f0;
+    background: white; font-size: 12px; font-weight: 500; cursor: pointer;
+    color: #6b7280; transition: all .15s; font-family: inherit;
+  }
+  .reset-btn:hover { background: #f1f5f9; color: #374151; }
+  .date-divider { text-align: center; margin: 8px 0; }
+  .date-chip { background: rgba(255,255,255,.75); padding: 3px 10px; border-radius: 10px; font-size: 11px; color: #4b5563; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="demo-banner">Simulateur Bot — Cleanner Dakar</div>
+<div class="scenario-bar">
+  <span class="scenario-label">Scénario :</span>
+  <button class="scenario-btn active" onclick="setScenario('new',this)">Nouveau client</button>
+  <button class="scenario-btn" onclick="setScenario('returning',this)">Client régulier</button>
+</div>
+
+<div class="phone">
+  <div class="wa-header">
+    <div class="wa-avatar">C</div>
+    <div>
+      <div class="wa-name">Cleanner</div>
+      <div class="wa-status"><span class="wa-dot"></span>en ligne</div>
+    </div>
+  </div>
+  <div class="chat-bg" id="chat">
+    <div class="date-divider"><span class="date-chip">Aujourd'hui</span></div>
+  </div>
+  <div class="reset-bar">
+    <button class="reset-btn" onclick="resetChat()">Recommencer la simulation</button>
+  </div>
+</div>
+
+<script>
+let scenario = 'new';
+let isTyping = false;
+let mem = { prenom: '', adresse: '', pieces: '', creneau: '' };
+
+function ts() {
+  const n = new Date();
+  return n.getHours().toString().padStart(2,'0') + ':' + n.getMinutes().toString().padStart(2,'0');
+}
+
+// ── State machine ──────────────────────────────────────────────
+const states = {
+
+  new_welcome: {
+    text: '👋 Bienvenue chez *Cleanner* !\n\nLa blanchisserie qui vient à vous à Dakar 🧺\n\nC\'est votre première commande ?',
+    options: [
+      { label: '1️⃣  Oui, je suis nouveau(elle)', goto: 'new_reg_prenom' },
+      { label: '2️⃣  J\'ai déjà un compte',        goto: 'existing_lookup' }
+    ]
+  },
+
+  existing_lookup: {
+    text: '🔍 Je recherche votre compte…\n\nVotre *prénom* pour confirmer ?',
+    input: { placeholder: 'Votre prénom…', save: (v) => { mem.prenom = v; }, goto: 'existing_found' }
+  },
+
+  existing_found: {
+    textFn: () => `✅ Compte trouvé — bon retour *${mem.prenom}* ! 👋\n\n📍 Adresse enregistrée : *${mem.adresse || 'Sacré-Cœur 3'}*\n\n_(Dans la vraie app, votre numéro WA suffit — pas besoin de vous identifier)_`,
+    auto: 'order_pieces'
+  },
+
+  new_reg_prenom: {
+    text: 'Super ! On crée votre profil en 2 questions.\n\nVotre *prénom* ?',
+    input: { placeholder: 'Tapez votre prénom…', save: (v) => { mem.prenom = v; }, goto: 'new_reg_adresse' }
+  },
+
+  new_reg_adresse: {
+    textFn: () => `Bonjour *${mem.prenom}* ! 👋\n\nVotre *quartier / adresse de collecte* ?\n_(ex: Sacré-Cœur 3, villa rose)_`,
+    input: { placeholder: 'Tapez votre adresse…', save: (v) => { mem.adresse = v; }, goto: 'new_reg_confirm' }
+  },
+
+  new_reg_confirm: {
+    textFn: () => `✅ Parfait *${mem.prenom}* ! Votre profil est créé.\nVous n'aurez plus à ressaisir ces infos.\n\n📍 Adresse enregistrée : *${mem.adresse}*`,
+    auto: 'order_pieces'
+  },
+
+  order_pieces: {
+    text: '📦 Combien de pièces avez-vous à laver ?\n_(T-shirt, pantalon, robe… — minimum 5 pièces)_',
+    options: [
+      { label: '👕  5 à 10 pièces',  save: () => { mem.pieces = '5 à 10 pièces';  }, goto: 'order_creneau' },
+      { label: '👕  10 à 20 pièces', save: () => { mem.pieces = '10 à 20 pièces'; }, goto: 'order_creneau' },
+      { label: '👕  20 pièces et +', save: () => { mem.pieces = '20 pièces et +'; }, goto: 'order_creneau' }
+    ]
+  },
+
+  order_creneau: {
+    text: '📅 Quel créneau vous convient ?',
+    options: [
+      { label: '🌅  Demain matin (8h–12h)',       save: () => { mem.creneau = 'Demain matin · 8h–12h';       }, goto: 'order_adresse' },
+      { label: '☀️  Demain après-midi (14h–18h)', save: () => { mem.creneau = 'Demain après-midi · 14h–18h'; }, goto: 'order_adresse' },
+      { label: '📆  Choisir un autre jour',         goto: 'order_autre_jour' }
+    ]
+  },
+
+  order_autre_jour: {
+    text: '📆 Quel jour vous convient ?',
+    options: [
+      { label: 'Dans 2 jours (matin)',      save: () => { mem.creneau = 'Dans 2 jours · 8h–12h';      }, goto: 'order_adresse' },
+      { label: 'Dans 2 jours (après-midi)', save: () => { mem.creneau = 'Dans 2 jours · 14h–18h';     }, goto: 'order_adresse' },
+      { label: 'Dans 3 jours (matin)',      save: () => { mem.creneau = 'Dans 3 jours · 8h–12h';      }, goto: 'order_adresse' }
+    ]
+  },
+
+  order_adresse: {
+    textFn: () => `📍 Collecte à votre adresse habituelle ?\n→ *${mem.adresse}*`,
+    options: [
+      { label: '✅  Oui, c\'est correct',  goto: 'order_recap' },
+      { label: '✏️  Modifier l\'adresse',  goto: 'order_adresse_modif' }
+    ]
+  },
+
+  order_adresse_modif: {
+    text: 'Entrez votre nouvelle adresse de collecte :',
+    input: { placeholder: 'Nouvelle adresse…', save: (v) => { mem.adresse = v; }, goto: 'order_recap' }
+  },
+
+  order_recap: {
+    textFn: () =>
+      `🧾 *Récap de votre commande*\n\n👤 ${mem.prenom}\n📍 ${mem.adresse}\n📅 ${mem.creneau}\n👕 ${mem.pieces}\n\n─────────────────\nPour confirmer votre créneau, réglez les *frais de réservation : 500 FCFA*\n_(déduits de votre facture finale)_\n\n⏳ Lien valable 30 minutes`,
+    wave: true,
+    options: [
+      { label: '💸  J\'ai effectué le paiement Wave', goto: 'order_confirmed' },
+      { label: '✏️  Modifier la commande',             goto: 'order_pieces' }
+    ]
+  },
+
+  order_confirmed: {
+    textFn: () =>
+      `✅ *Créneau confirmé, ${mem.prenom} !*\n\nPaiement reçu — merci 🙏\n\n🔢 Commande *#0042*\n📅 ${mem.creneau}\n\nOn arrive avec votre sac numéroté.\nAssurez-vous d'être disponible.\n\nÀ bientôt ! 👋`
+  },
+
+  // ── Client régulier ──
+  returning_welcome: {
+    textFn: () => `👋 Bon retour *${mem.prenom || 'Amadou'}* !\n\nQue souhaitez-vous faire ?`,
+    options: [
+      { label: '1️⃣  Passer une commande',    goto: 'order_pieces' },
+      { label: '2️⃣  Suivre ma commande',     goto: 'returning_tracking' },
+      { label: '3️⃣  Parler à un conseiller', goto: 'returning_conseiller' }
+    ]
+  },
+
+  returning_tracking: {
+    text: '🔍 Statut de votre dernière commande :\n\n🔢 Commande *#0087*\n📅 Collectée le 24 avril\n\n🔄 *En traitement* chez notre partenaire.\n\nVous serez notifié dès que votre linge est prêt. 🧺'
+  },
+
+  returning_conseiller: {
+    text: '👤 Un conseiller va vous répondre très vite.\n\nHoraires : *lundi–samedi, 8h–19h* 🙏'
+  },
+
+  returning_recap: {
+    textFn: () =>
+      `🧾 *Récap de votre commande*\n\n👤 ${mem.prenom || 'Amadou'}\n📍 ${mem.adresse}\n📅 ${mem.creneau}\n👕 ${mem.pieces}\n\n─────────────────\n✅ Client régulier — *pas de frais de réservation*\n\nConfirmer ?`,
+    options: [
+      { label: '✅  Confirmer',      goto: 'returning_confirmed' },
+      { label: '✏️  Modifier',       goto: 'order_pieces' }
+    ]
+  },
+
+  returning_confirmed: {
+    textFn: () =>
+      `✅ *Commande confirmée, ${mem.prenom || 'Amadou'} !*\n\n🔢 Commande *#0088*\n📅 ${mem.creneau}\n\nOn arrive avec votre sac numéroté.\nÀ bientôt ! 👋`
+  }
+};
+
+function resolveState(key) {
+  if (scenario === 'returning' && key === 'order_recap') return states['returning_recap'];
+  return states[key];
+}
+
+function renderText(s) { return s.textFn ? s.textFn() : s.text; }
+
+function addBotMsg(text, wave) {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'msg-row bot';
+  const html = text
+    .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+    .replace(/_(.*?)_/g, '<em style="color:#6b7280;font-style:italic">$1</em>');
+  const waveHtml = wave ? `<div class="wave-link">
+    <div class="wave-icon">W</div>
+    <div><div class="wave-text-main">Payer 500 FCFA — Wave</div>
+    <div class="wave-text-sub">wave.com/s/XXXXXX · expire dans 30 min</div></div>
+  </div>` : '';
+  row.innerHTML = `<div class="bubble bot">${html}${waveHtml}<div class="bubble-time">${ts()}</div></div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addUserMsg(text) {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'msg-row user';
+  row.innerHTML = `<div class="bubble user">${text}<div class="bubble-time">${ts()} ✓✓</div></div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping() {
+  if (isTyping) return;
+  isTyping = true;
+  const chat = document.getElementById('chat');
+  const d = document.createElement('div');
+  d.className = 'msg-row bot'; d.id = 'typing-row';
+  d.innerHTML = `<div class="typing-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  chat.appendChild(d);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function hideTyping() {
+  const r = document.getElementById('typing-row');
+  if (r) r.remove();
+  isTyping = false;
+}
+
+function clearWidget() {
+  const r = document.getElementById('widget');
+  if (r) r.remove();
+}
+
+function showOptions(options, onPick) {
+  clearWidget();
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'options-row'; row.id = 'widget';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-btn';
+    btn.textContent = opt.label;
+    btn.onclick = () => {
+      if (isTyping) return;
+      row.querySelectorAll('.opt-btn').forEach(b => b.disabled = true);
+      btn.classList.add('selected');
+      if (opt.save) opt.save();
+      setTimeout(() => {
+        clearWidget();
+        addUserMsg(opt.label);
+        onPick(opt.goto);
+      }, 180);
+    };
+    row.appendChild(btn);
+  });
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showInput(cfg, onSubmit) {
+  clearWidget();
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = 'input-row'; row.id = 'widget';
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'chat-input';
+  inp.placeholder = cfg.placeholder;
+  inp.maxLength = 60;
+  const btn = document.createElement('button');
+  btn.className = 'send-btn';
+  btn.innerHTML = '➤';
+  btn.disabled = true;
+
+  inp.addEventListener('input', () => { btn.disabled = inp.value.trim().length < 2; });
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !btn.disabled) submit(); });
+  btn.onclick = submit;
+
+  function submit() {
+    const val = inp.value.trim();
+    if (val.length < 2) return;
+    if (cfg.save) cfg.save(val);
+    clearWidget();
+    addUserMsg(val);
+    onSubmit(cfg.goto);
+  }
+
+  row.appendChild(inp);
+  row.appendChild(btn);
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+  setTimeout(() => inp.focus(), 100);
+}
+
+function runState(key) {
+  if (!key) return;
+  const state = resolveState(key);
+  if (!state) return;
+  const text = renderText(state);
+  const typingMs = Math.min(400 + text.length * 13, 1800);
+
+  setTimeout(() => {
+    showTyping();
+    setTimeout(() => {
+      hideTyping();
+      addBotMsg(text, state.wave);
+
+      if (state.auto) { setTimeout(() => runState(state.auto), 350); return; }
+
+      if (state.input) {
+        setTimeout(() => showInput(state.input, (next) => {
+          setTimeout(() => runState(next), 300);
+        }), 250);
+      } else if (state.options) {
+        setTimeout(() => showOptions(state.options, (next) => {
+          setTimeout(() => runState(next), 300);
+        }), 250);
+      }
+    }, typingMs);
+  }, 600);
+}
+
+function setScenario(s, btn) {
+  scenario = s;
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  resetChat();
+}
+
+function resetChat() {
+  mem = {
+    prenom:  scenario === 'returning' ? 'Amadou'                  : '',
+    adresse: scenario === 'returning' ? 'Cité Keur Gorgui, Apt 12' : '',
+    pieces: '', creneau: ''
+  };
+  const chat = document.getElementById('chat');
+  chat.innerHTML = '<div class="date-divider"><span class="date-chip">Aujourd\'hui</span></div>';
+  clearWidget();
+  isTyping = false;
+  runState(scenario === 'returning' ? 'returning_welcome' : 'new_welcome');
+}
+
+resetChat();
+</script>
+</body>
+</html>
